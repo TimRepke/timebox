@@ -1,4 +1,4 @@
-# timebox
+# TimeBox Timer for Meetings
 This is a small demo of a timer that can be used for timeboxed meetings with multiple segments. It's nice to throw on a beamer and have it in the background for everyone to be reminded of the time.
 
 Check out the demo:
