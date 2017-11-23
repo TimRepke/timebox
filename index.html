@@ -1,0 +1,317 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Time Boxer</title>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+        }
+
+        *, *:before, *:after {
+            -moz-box-sizing: border-box;
+            -webkit-box-sizing: border-box;
+            box-sizing: border-box;
+        }
+
+        html {
+            font-family: sans-serif;
+        }
+
+        #box_bar {
+            width: 30px;
+            height: 200px;
+            border: 2px solid #ccc;
+            overflow: hidden;
+            position: relative;
+        }
+
+        #box_bar > div {
+            width: 100%;
+            overflow: hidden;
+            position: absolute;
+            /*border: 2px solid #999;*/
+            border-top-width: 0;
+            background-color: #999;
+            bottom: 0;
+            height: 0;
+        }
+
+        .columnsContainer {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translateY(-50%) translateX(-50%);
+        }
+
+        .timers, .current_box {
+            border: 1px solid #ccc;
+            padding: 1.25em;
+        }
+
+        .timers {
+            margin-bottom: .5em;
+            margin-right: 13.5em;
+        }
+
+        .current_box {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 12.75em;
+            text-align: center;
+        }
+
+        .timers {
+            text-align: center;
+            position: relative;
+        }
+
+        #timer {
+            font-size: 12vw;
+            font-weight: bold;
+            font-family: monospace;
+        }
+
+        #timer > span {
+            font-size: 0.1em;
+        }
+
+        #daytime {
+            font-size: 2vw;
+            font-family: monospace;
+        }
+
+        .box_times {
+            font-family: monospace;
+        }
+
+        .box_times, #box_bar {
+            float: left;
+        }
+
+        .box_times {
+            margin-left: 1em;
+            font-size: 2em;
+            margin-top: 100px;
+            transform: translateY(-1em);
+        }
+
+        #box_timer {
+            border-bottom: 1px dashed grey;
+        }
+
+        #box_name {
+            margin-top: 0.6em;
+            font-size: 1.2em;
+        }
+
+        .button {
+            background-color: #4CAF50;
+            border: none;
+            color: white;
+            padding: 15px 32px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 4px 2px;
+            cursor: pointer;
+        }
+
+        #pp {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+        }
+
+        #paused {
+            position: absolute;
+            top: 3px;
+            right: 3px;
+        }
+    </style>
+</head>
+<body>
+<div class="columnsContainer">
+    <div class="timers">
+        <div id="timer">00<span>hrs</span>:23<span>min</span>:42<span>sec</span></div>
+        <div id="daytime"><span>Current Time: </span>11:23</div>
+        <div id="paused" style="display: none;">[paused]</div>
+    </div>
+    <div class="current_box">
+        <div id="box_bar">
+            <div id="box_bar_inner" style="height:32%"></div>
+        </div>
+        <div class="box_times">
+            <div id="box_timer">02:25</div>
+            <div id="box_time">03:00</div>
+        </div>
+        <div style="clear: both"></div>
+        <div id="box_name">Current Name</div>
+    </div>
+</div>
+<button id="pp" class="button">PP</button>
+
+<script type="application/javascript">
+    //var timeBoxes = [ {name: 'phase 1', time: 3},{name: 'phase 2', time: 4}, {name: 'phase 3', time: 90}, {name: 'phase 4', time: 900}];
+    var timeBoxes = [
+        {name: 'Who\'s Wo', time: 10 * 60},
+        {name: 'Your Persona', time: 5 * 60},
+        {name: 'Reverse Brainstorming', time: 5 * 60},
+        {name: 'Wait, What?', time: 3 * 60},
+        {name: 'Hot Potato', time: 5 * 60},
+        {name: 'Ranking', time: 5 * 60},
+        {name: 'Story Graph', time: 15 * 60},
+        {name: 'Paper Prototype', time: 20 * 60},
+        {name: 'Presentation 1', time: 3 * 60},
+        {name: 'Presentation 2', time: 3 * 60},
+        {name: 'Presentation 3', time: 3 * 60},
+        {name: 'Presentation 4', time: 3 * 60},
+        {name: 'Presentation 5', time: 3 * 60}
+    ];
+
+    var progressBarInnerElem = document.getElementById('box_bar_inner');
+    var boxTimerElem = document.getElementById('box_timer');
+    var boxTimeElem = document.getElementById('box_time');
+    var boxNameElem = document.getElementById('box_name');
+    var currentTimeElem = document.getElementById('daytime');
+    var timerElem = document.getElementById('timer');
+
+    var timeLeft = timeBoxes.reduce(function (sum, box) {
+        sum += box['time'];
+        return sum;
+    }, 0);
+    var isPaused = false;
+
+    var zeropad = function (num) {
+        if (num < 10) return '0' + num;
+        return num;
+    };
+
+    var sec2txt_h = function (secs) {
+        if (secs <= 0)
+            return [zeropad(0), zeropad(0), zeropad(0)];
+        var h = Math.floor(secs / 60 / 60);
+        var m = Math.floor((secs - (h * 60 * 60)) / 60);
+        var s = Math.floor((secs - (h * 60 * 60) - (m * 60)));
+        return [zeropad(h), zeropad(m), zeropad(s)];
+    };
+
+    var sec2txt_m = function (secs) {
+        if (secs <= 0)
+            return [zeropad(0), zeropad(0)];
+        var m = Math.floor(secs / 60);
+        var s = Math.floor((secs - (m * 60)));
+        return [zeropad(m), zeropad(s)];
+    };
+
+    // https://stackoverflow.com/questions/7128675/from-green-to-red-color-depend-on-percentage
+    var percentColors = [
+        {pct: 0.0, color: {r: 0xff, g: 0x00, b: 0}},
+        {pct: 0.5, color: {r: 0xff, g: 0xff, b: 0}},
+        {pct: 1.0, color: {r: 0x00, g: 0xff, b: 0}}];
+
+    var getColorForPercentage = function (pct) {
+        for (var i = 1; i < percentColors.length - 1; i++) {
+            if (pct < percentColors[i].pct) {
+                break;
+            }
+        }
+        var lower = percentColors[i - 1];
+        var upper = percentColors[i];
+        var range = upper.pct - lower.pct;
+        var rangePct = (pct - lower.pct) / range;
+        var pctLower = 1 - rangePct;
+        var pctUpper = rangePct;
+        var color = {
+            r: Math.floor(lower.color.r * pctLower + upper.color.r * pctUpper),
+            g: Math.floor(lower.color.g * pctLower + upper.color.g * pctUpper),
+            b: Math.floor(lower.color.b * pctLower + upper.color.b * pctUpper)
+        };
+        return 'rgb(' + [color.r, color.g, color.b].join(',') + ')';
+    };
+
+    var setProgressBar = function (percentage) {
+        progressBarInnerElem.style = 'background-color:' + getColorForPercentage(percentage) + ';' +
+            'height:' + (percentage * 100).toFixed(0) + '%;'
+    };
+
+    var bigTimeText = function (secsLeft) {
+        var parts = sec2txt_h(secsLeft);
+        return parts[0] + '<span>hrs</span>:' + parts[1] + '<span>min</span>:' + parts[2] + '<span>sec</span>';
+    };
+
+    var currentTimeText = function () {
+        var ret = '<span>Current Time: </span>';
+        var time = new Date();
+        ret += ('0' + time.getHours()).slice(-2) + ':';
+        ret += ('0' + time.getMinutes()).slice(-2);
+        return ret;
+    };
+
+    var smallTimeText = function (secsLeft) {
+        var parts = sec2txt_m(secsLeft);
+        return parts[0] + ':' + parts[1];
+    };
+
+    var resetAndNext = function (next_i) {
+        var box = timeBoxes[next_i];
+        boxNameElem.innerHTML = box['name'];
+        var step = 0;
+        var targetTime = box['time'];
+        var stepSize = targetTime / 100;
+        var loop = setInterval(function () {
+            setProgressBar(step / 100);
+            boxTimerElem.innerHTML = smallTimeText(Math.floor(step * stepSize));
+            boxTimeElem.innerHTML = smallTimeText(Math.floor(step * stepSize));
+            step++;
+            if (step > 100) {
+                clearInterval(loop);
+                loopBox(next_i)
+            }
+        }, 15);
+    };
+
+    var loopBox = function (box_i) {
+        var box = timeBoxes[box_i];
+        box['timeLeft'] = box['time'];
+        boxNameElem.innerHTML = box['name'];
+
+        var loop = setInterval(function () {
+            if (box['timeLeft'] <= 0) {
+                clearInterval(loop);
+                var next_i = box_i + 1;
+                if (next_i < timeBoxes.length) {
+                    resetAndNext(next_i);
+                    timeLeft++;
+                }
+            }
+            setProgressBar(box['timeLeft'] / box['time']);
+            boxTimerElem.innerHTML = smallTimeText(box['timeLeft']);
+            boxTimeElem.innerHTML = smallTimeText(box['time']);
+
+            currentTimeElem.innerHTML = currentTimeText();
+            timerElem.innerHTML = bigTimeText(timeLeft);
+
+            if (!isPaused) {
+                timeLeft--;
+                box['timeLeft']--;
+            }
+        }, 1000);
+    };
+
+    document.getElementById('pp').addEventListener('click', function () {
+        isPaused = !isPaused;
+        document.getElementById('paused').style.display = (isPaused) ? 'block' : 'none';
+    });
+
+    loopBox(0);
+
+</script>
+</body>
+</html>
+
